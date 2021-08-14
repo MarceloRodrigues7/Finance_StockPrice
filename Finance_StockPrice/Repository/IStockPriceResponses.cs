@@ -1,13 +1,13 @@
-﻿using Finance_StockPrice.Model;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using TwelveDataSharp.Interfaces;
+using TwelveDataSharp.Library.ResponseModels;
 
 namespace Finance_StockPrice.Repository
 {
     public interface IStockPriceResponses
     {
-        public object GetPriceResponse(string symbol);
+        public ITwelveDataClient GetPriceResponse(string symbol);
         public List<string> GetSymbols();
-        public StockPrice GetStockPrice(string symbol);
-        public bool Put_StockPrice(StockPrice stockPrice);
+        public bool ValidationHistoryValue(TimeSeriesValues timeSeriesValues, string symbol);
     }
 }
