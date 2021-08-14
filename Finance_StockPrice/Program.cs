@@ -1,20 +1,24 @@
-﻿using Finance_StockPrice.Model;
-using Finance_StockPrice.Repository;
+﻿using Finance_StockPrice.Repository;
 using Finance_StockPrice.Utils;
 using Serilog;
-using Serilog.Events;
 using System;
 using System.Globalization;
 using System.IO;
-using System.Text.RegularExpressions;
+using System.Threading;
 
 namespace Finance_StockPrice
 {
     class Program
     {
+        private static bool RunProcess = true;
         static void Main()
         {
             Console.Title = $"Stock Price - {AppConsole.CurrentVersion}";
+            CultureInfo culture = new("en-US", false);
+            Thread.CurrentThread.CurrentCulture = culture;
+            Thread.CurrentThread.CurrentUICulture = culture;
+
+            #region Serilog Configuration
             Log.Logger = new LoggerConfiguration()
             .MinimumLevel.Information()
             .WriteTo.Console()
@@ -23,56 +27,50 @@ namespace Finance_StockPrice
                     rollingInterval: RollingInterval.Day)
                 .CreateLogger();
             Console.WriteLine(AppConsole.InitText);
+            #endregion
+            
             Log.Logger.Information($"Version: {AppConsole.CurrentVersion}");
-            Log.Logger.Information($"Connection DataBse: {AppConsole.ValidConectionDb()}");
-            Log.Logger.Information("Sating Application");
-            Startup();
+            Log.Logger.Information($"Connection DataBase: {AppConsole.ValidConectionDb()}");
+            Log.Logger.Information("Starting Application");
+            while (true)
+            {
+                Thread workerThread = new(new ThreadStart(Startup));
+                workerThread.Start();
+                while (RunProcess)
+                {
+                    Thread.Sleep(10000);
+                }
+                Log.Logger.Information("Finishing Process.");
+                Thread.Sleep(new TimeSpan(6, 0, 0));
+            }
             Log.Logger.Information("Finishing Application");
             Log.CloseAndFlush();
         }
 
         private static void Startup()
         {
-            CultureInfo culture = new("en-US", false);
-            IStockPriceResponses stockPriceReponse = new StockPriceResponses();
-            var symbols = stockPriceReponse.GetSymbols();
-            foreach (var symbol in symbols)
+            try
             {
-                var res = stockPriceReponse.GetPriceResponse(symbol).ToString();
-                var stockPrice = StockPrice.FormatObject(res, culture, symbol);
-                if (stockPrice.Company_Name == null)
+                IStockPriceResponses stockPriceReponse = new StockPriceResponses();
+                var symbols = stockPriceReponse.GetSymbols();
+                foreach (var symbol in symbols)
                 {
-                    Log.Logger.Error(res);
-                }
-                else
-                {
-                    var db_StockPrice = stockPriceReponse.GetStockPrice(symbol);
-                    if (!db_StockPrice.Equals(stockPrice))
+                    var data = stockPriceReponse.GetPriceResponse(symbol);
+                    var quote = data.GetTimeSeriesAsync("AAPL", "1h");
+                    foreach (var item in quote.Result.Values)
                     {
-                        stockPriceReponse.Put_StockPrice(stockPrice);
-                        Log.Logger.Information($"{symbol} stock price successfully update!");
-                        WorkerHistory(db_StockPrice.Id, stockPrice);
-                        Log.Logger.Information($"{symbol} history successfully added!");
-                    }
-                    else
-                    {
-                        Log.Logger.Warning($"{symbol} without changes.");
+                        var res = stockPriceReponse.ValidationHistoryValue(item, symbol);
+                        Log.Logger.Information($"{symbol} - {item.Datetime} - Status:{res}");
                     }
                 }
             }
-        }
-
-        private static void WorkerHistory(long IdCompany, StockPrice stockPrice)
-        {
-            IHistoryFinances historyFinances = new HistoryFinances();
-
-            var currentDay = DateTime.Now.Date;
-            var currentHour = new TimeSpan(DateTime.Now.Hour, 0, 0);
-            var validLastHistory = historyFinances.ValidLastHistory(IdCompany, currentDay, currentHour);
-            if (validLastHistory)
+            catch (Exception e)
             {
-                var history = HistoryFinance.FormatObject(IdCompany, stockPrice, currentDay, currentHour);
-                historyFinances.PostHistory(history);
+                Log.Logger.Error(e.Message);
+            }
+            finally
+            {
+                RunProcess = false;
             }
         }
     }

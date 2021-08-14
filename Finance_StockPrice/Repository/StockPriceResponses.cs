@@ -1,70 +1,81 @@
 ﻿using Dapper;
 using Finance_StockPrice.Model;
 using Finance_StockPrice.Utils;
-using Refit;
 using System;
 using System.Collections.Generic;
 using System.Data.SqlClient;
-using System.Globalization;
 using System.Linq;
+using System.Net.Http;
+using TwelveDataSharp;
+using TwelveDataSharp.Interfaces;
+using TwelveDataSharp.Library.ResponseModels;
 
 namespace Finance_StockPrice.Repository
 {
     public class StockPriceResponses : IStockPriceResponses
     {
-        public object GetPriceResponse(string symbol)
+        public ITwelveDataClient GetPriceResponse(string symbol)
         {
-            var tentativas = 0;
-            var concluido = false;
-            var numKey = 0;
-            object res = string.Empty;
-
-            while (tentativas < 3 && concluido == false)
-            {
-                try
-                {
-                    var request = RestService.For<IStockPriceApi>("http://api.hgbrasil.com/finance");
-                    res = request.GetPrice(AppConsole.Keys[numKey], symbol).Result;
-                    concluido = true;
-                }
-                catch (Exception e)
-                {
-                    res = e.Message;
-                }
-                finally
-                {
-                    tentativas++;
-                    numKey++;
-                }
-            }
-            return res;
+            HttpClient _client = new();
+            ITwelveDataClient _twelveDataClient = new TwelveDataClient(AppConsole.Keys[0], _client);
+            return _twelveDataClient;
         }
 
         public List<string> GetSymbols()
         {
             using (var connection = new SqlConnection(AppConsole.ConnectionString))
             {
-                var query = "SELECT Symbol FROM Finance_StockPrice";
+                var query = "SELECT Symbol FROM StockList";
                 return connection.Query<string>(query).ToList();
             };
         }
 
-        public StockPrice GetStockPrice(string symbol)
+        public bool ValidationHistoryValue(TimeSeriesValues timeSeriesValues, string symbol)
+        {
+            var id = GetIdSymbol(symbol);
+            var res = false;
+            var validation = GetHistory(id, timeSeriesValues.Datetime);
+            if (!validation)
+            {
+                res = PostHistoryPrice(id, timeSeriesValues);
+            }
+            return res;
+        }
+
+        private static long GetIdSymbol(string symbol)
         {
             using (var connection = new SqlConnection(AppConsole.ConnectionString))
             {
-                var query = "SELECT * FROM Finance_StockPrice WHERE Symbol=@symbol";
-                return connection.QueryFirstOrDefault<StockPrice>(query, new { symbol });
+                var query = "SELECT Id FROM StockList WITH(NOLOCK) WHERE Symbol=@symbol";
+                return connection.QueryFirstOrDefault<long>(query, new { symbol });
             };
         }
 
-        public bool Put_StockPrice(StockPrice stockPrice)
+        private static bool GetHistory(long id, DateTime dateRegister)
         {
             using (var connection = new SqlConnection(AppConsole.ConnectionString))
             {
-                var query = "UPDATE Finance_StockPrice SET Market_Cap=@Market_Cap,Price=@Price,Change_Percent=@Change_Percent,Updated_At=@Updated_At WHERE Symbol=@Symbol";
-                var Updated_At = DateTime.Parse(stockPrice.Updated_At.Substring(1, 19));
-                return connection.Execute(query, new { stockPrice.Market_Cap, stockPrice.Price, stockPrice.Change_Percent, Updated_At, stockPrice.Symbol }) > 0;
+                var query = "SELECT Id FROM HistoryPrice WITH(NOLOCK) WHERE IdStockList=@id AND DateRegister=@dateRegister";
+                return connection.QueryFirstOrDefault<long>(query, new { id, dateRegister }) > 0;
+            };
+        }
+
+        private static bool PostHistoryPrice(long IdStockList, TimeSeriesValues timeSeriesValues)
+        {
+            using (var connection = new SqlConnection(AppConsole.ConnectionString))
+            {
+                var query = @"INSERT INTO HistoryPrice(IdStockList,DateRegister,Opening,HighestValue,LowerValue,CloseValue,Volume)
+                              VALUES(@IdStockList,@Datetime,@Open,@High,@Low,@Close,@Volume)";
+                return connection.QueryFirstOrDefault<long>(query, new
+                {
+                    IdStockList,
+                    timeSeriesValues.Datetime,
+                    timeSeriesValues.Open,
+                    timeSeriesValues.High,
+                    timeSeriesValues.Low,
+                    timeSeriesValues.Close,
+                    timeSeriesValues.Volume
+                }) > 0;
             };
         }
     }

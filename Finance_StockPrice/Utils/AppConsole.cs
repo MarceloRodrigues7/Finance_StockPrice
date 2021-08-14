@@ -10,6 +10,7 @@ namespace Finance_StockPrice.Utils
 {
     public class AppConsole
     {
+
         public static string CurrentVersion
         {
             get
@@ -34,8 +35,8 @@ namespace Finance_StockPrice.Utils
    @@   @   @   @ @@    @  @  @     @ @   @ @@    @@
 @@@@@   @   @@@@@ @@@@@ @   @ @     @  @  @ @@@@@ @@@@@";
 
-        public static List<string> Keys = new() { "YOUKEY", "YOUKEY", "YOUKEY" };
+        public static List<string> Keys = new() { "cb2837f1c3c4487996150f46d7645ed3"};
 
-        public static readonly string ConnectionString = "server=YOUSERVER;database=YOUDB;user=YOUUSER;password=YOUPASS;Connection Timeout=1200";
+        public static readonly string ConnectionString = "server=svaz.database.windows.net;database=dbAzure;user=adm;password=P@ssword;Connection Timeout=1200";
     }
 }
