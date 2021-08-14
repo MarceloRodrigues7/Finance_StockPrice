@@ -1,10 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Data.SqlClient;
-using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Finance_StockPrice.Utils
 {
@@ -35,8 +31,8 @@ namespace Finance_StockPrice.Utils
    @@   @   @   @ @@    @  @  @     @ @   @ @@    @@
 @@@@@   @   @@@@@ @@@@@ @   @ @     @  @  @ @@@@@ @@@@@";
 
-        public static List<string> Keys = new() { "cb2837f1c3c4487996150f46d7645ed3"};
+        public static List<string> Keys = new() { "YOUTOKEN" };
 
-        public static readonly string ConnectionString = "server=svaz.database.windows.net;database=dbAzure;user=adm;password=P@ssword;Connection Timeout=1200";
+        public static readonly string ConnectionString = "server=YOUSERVER;database=YOUDATABASE;user=YOUUSER;password=YOUPASSWORD;Connection Timeout=1200";
     }
 }

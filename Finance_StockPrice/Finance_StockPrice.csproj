@@ -4,8 +4,8 @@
     <TargetFramework>net5.0</TargetFramework>
     <StartupObject>Finance_StockPrice.Program</StartupObject>
     <NeutralLanguage>pt-BR</NeutralLanguage>
-    <ApplicationIcon>
-    </ApplicationIcon>
+    <ApplicationIcon>Utils\Line_ui_icons_Svg-13_icon-icons.com_72160.ico</ApplicationIcon>
+    <Win32Resource />
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Dapper.Data" Version="2.0.0" />

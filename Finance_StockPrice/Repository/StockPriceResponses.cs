@@ -1,5 +1,4 @@
 ﻿using Dapper;
-using Finance_StockPrice.Model;
 using Finance_StockPrice.Utils;
 using System;
 using System.Collections.Generic;
@@ -66,7 +65,7 @@ namespace Finance_StockPrice.Repository
             {
                 var query = @"INSERT INTO HistoryPrice(IdStockList,DateRegister,Opening,HighestValue,LowerValue,CloseValue,Volume)
                               VALUES(@IdStockList,@Datetime,@Open,@High,@Low,@Close,@Volume)";
-                return connection.QueryFirstOrDefault<long>(query, new
+                return connection.Execute(query, new
                 {
                     IdStockList,
                     timeSeriesValues.Datetime,

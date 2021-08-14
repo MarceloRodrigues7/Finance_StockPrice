@@ -28,7 +28,7 @@ namespace Finance_StockPrice
                 .CreateLogger();
             Console.WriteLine(AppConsole.InitText);
             #endregion
-            
+
             Log.Logger.Information($"Version: {AppConsole.CurrentVersion}");
             Log.Logger.Information($"Connection DataBase: {AppConsole.ValidConectionDb()}");
             Log.Logger.Information("Starting Application");
@@ -40,11 +40,9 @@ namespace Finance_StockPrice
                 {
                     Thread.Sleep(10000);
                 }
-                Log.Logger.Information("Finishing Process.");
-                Thread.Sleep(new TimeSpan(6, 0, 0));
+                Log.Logger.Information("Finished Process.");
+                Thread.Sleep(new TimeSpan(2, 0, 0));
             }
-            Log.Logger.Information("Finishing Application");
-            Log.CloseAndFlush();
         }
 
         private static void Startup()
@@ -56,7 +54,7 @@ namespace Finance_StockPrice
                 foreach (var symbol in symbols)
                 {
                     var data = stockPriceReponse.GetPriceResponse(symbol);
-                    var quote = data.GetTimeSeriesAsync("AAPL", "1h");
+                    var quote = data.GetTimeSeriesAsync(symbol, "5min");
                     foreach (var item in quote.Result.Values)
                     {
                         var res = stockPriceReponse.ValidationHistoryValue(item, symbol);
