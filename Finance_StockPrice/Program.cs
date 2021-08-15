@@ -1,10 +1,14 @@
-﻿using Finance_StockPrice.Repository;
+﻿using Finance_StockPrice.Model;
+using Finance_StockPrice.Repository;
 using Finance_StockPrice.Utils;
 using Serilog;
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Threading;
+using System.Threading.Tasks;
+using TwelveDataSharp.Library.ResponseModels;
 
 namespace Finance_StockPrice
 {
@@ -51,24 +55,75 @@ namespace Finance_StockPrice
             {
                 IStockPriceResponses stockPriceReponse = new StockPriceResponses();
                 var symbols = stockPriceReponse.GetSymbols();
-                foreach (var symbol in symbols)
+                List<Task> task = new();
+                symbols.ForEach((value) =>
                 {
-                    var data = stockPriceReponse.GetPriceResponse(symbol);
-                    var quote = data.GetTimeSeriesAsync(symbol, "5min");
-                    foreach (var item in quote.Result.Values)
+                    task.Add(Task.Factory.StartNew(() =>
                     {
-                        var res = stockPriceReponse.ValidationHistoryValue(item, symbol);
-                        Log.Logger.Information($"{symbol} - {item.Datetime} - Status:{res}");
-                    }
-                }
+                        InitializationToProcess(stockPriceReponse, value);
+                    }));
+                });
+                Task.WaitAll(task.ToArray());
+                task.Clear();
+                symbols.Clear();
             }
             catch (Exception e)
             {
-                Log.Logger.Error(e.Message);
+                Log.Logger.Error($"ERROR - " + e.Message);
             }
             finally
             {
                 RunProcess = false;
+            }
+        }
+
+        private static void InitializationToProcess(IStockPriceResponses stockPriceReponse, string symbol)
+        {
+            ILogStockPriceRepository logStockPrice = new LogStockPriceRepository();
+            var data = stockPriceReponse.GetPriceResponse(symbol);
+            var quote = data.GetTimeSeriesAsync(symbol, "5min").Result;
+            if (quote.ResponseStatus != Enums.TwelveDataClientResponseStatus.Ok)
+            {
+                logStockPrice.PostLog(symbol, new LogStockPrice
+                {
+                    DateRegister = DateTime.Now,
+                    DataValidation = DateTime.Now,
+                    StatusRegister = 4,
+                    LogDescrition = quote.ResponseMessage
+                });
+            }
+            else
+            {
+                foreach (var item in quote.Values)
+                {
+                    var res = stockPriceReponse.ValidationHistoryValue(item, symbol);
+                    PostRegistration(logStockPrice, symbol, item, res);
+                    Log.Logger.Information($"{symbol} - {item.Datetime} - Status:{res}");
+                }
+            }
+        }
+
+        private static void PostRegistration(ILogStockPriceRepository logStockPrice, string symbol, TimeSeriesValues item, bool? res)
+        {
+            if (res.Value)
+            {
+                logStockPrice.PostLog(symbol, new LogStockPrice
+                {
+                    DateRegister = item.Datetime,
+                    DataValidation = DateTime.Now,
+                    StatusRegister = 1,
+                    LogDescrition = "Successfully registered"
+                });
+            }
+            else if (!res.Value)
+            {
+                logStockPrice.PostLog(symbol, new LogStockPrice
+                {
+                    DateRegister = item.Datetime,
+                    DataValidation = DateTime.Now,
+                    StatusRegister = 2,
+                    LogDescrition = "Already contains history"
+                });
             }
         }
     }

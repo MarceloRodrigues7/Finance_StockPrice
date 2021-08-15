@@ -8,6 +8,7 @@ namespace Finance_StockPrice.Repository
     {
         public ITwelveDataClient GetPriceResponse(string symbol);
         public List<string> GetSymbols();
-        public bool ValidationHistoryValue(TimeSeriesValues timeSeriesValues, string symbol);
+        public bool? ValidationHistoryValue(TimeSeriesValues timeSeriesValues, string symbol);
+        public long GetIdSymbol(string symbol);
     }
 }
