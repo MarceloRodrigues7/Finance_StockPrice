@@ -1,5 +1,6 @@
 ﻿using Dapper;
 using Finance_StockPrice.Utils;
+using Serilog;
 using System;
 using System.Collections.Generic;
 using System.Data.SqlClient;
@@ -29,10 +30,10 @@ namespace Finance_StockPrice.Repository
             };
         }
 
-        public bool ValidationHistoryValue(TimeSeriesValues timeSeriesValues, string symbol)
+        public bool? ValidationHistoryValue(TimeSeriesValues timeSeriesValues, string symbol)
         {
             var id = GetIdSymbol(symbol);
-            var res = false;
+            bool? res = false;
             var validation = GetHistory(id, timeSeriesValues.Datetime);
             if (!validation)
             {
@@ -41,7 +42,7 @@ namespace Finance_StockPrice.Repository
             return res;
         }
 
-        private static long GetIdSymbol(string symbol)
+        public long GetIdSymbol(string symbol)
         {
             using (var connection = new SqlConnection(AppConsole.ConnectionString))
             {
@@ -59,23 +60,39 @@ namespace Finance_StockPrice.Repository
             };
         }
 
-        private static bool PostHistoryPrice(long IdStockList, TimeSeriesValues timeSeriesValues)
+        private static bool? PostHistoryPrice(long IdStockList, TimeSeriesValues timeSeriesValues)
         {
-            using (var connection = new SqlConnection(AppConsole.ConnectionString))
+            try
             {
-                var query = @"INSERT INTO HistoryPrice(IdStockList,DateRegister,Opening,HighestValue,LowerValue,CloseValue,Volume)
-                              VALUES(@IdStockList,@Datetime,@Open,@High,@Low,@Close,@Volume)";
-                return connection.Execute(query, new
+                using (var connection = new SqlConnection(AppConsole.ConnectionString))
                 {
-                    IdStockList,
-                    timeSeriesValues.Datetime,
-                    timeSeriesValues.Open,
-                    timeSeriesValues.High,
-                    timeSeriesValues.Low,
-                    timeSeriesValues.Close,
-                    timeSeriesValues.Volume
-                }) > 0;
-            };
+                    var query = @"INSERT INTO HistoryPrice(IdStockList,DateRegister,Opening,HighestValue,LowerValue,CloseValue,Volume)
+                              VALUES(@IdStockList,@Datetime,@Open,@High,@Low,@Close,@Volume)";
+                    return connection.Execute(query, new
+                    {
+                        IdStockList,
+                        timeSeriesValues.Datetime,
+                        timeSeriesValues.Open,
+                        timeSeriesValues.High,
+                        timeSeriesValues.Low,
+                        timeSeriesValues.Close,
+                        timeSeriesValues.Volume
+                    }) > 0;
+                };
+            }
+            catch (Exception e)
+            {
+                new LogStockPriceRepository().PostLog(new Model.LogStockPrice
+                {
+                    IdStockList = IdStockList,
+                    DateRegister = timeSeriesValues.Datetime,
+                    DataValidation = DateTime.Now,
+                    StatusRegister = 3,
+                    LogDescrition = e.Message
+                });
+                Log.Logger.Error($"{IdStockList} -" + e.Message);
+                return null;
+            }
         }
     }
 }
