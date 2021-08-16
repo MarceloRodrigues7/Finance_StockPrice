@@ -1,5 +1,5 @@
 # Finance_StockPrice
-Application performs current information query about actions via API hgBrasil and save history in SqlAzure.
+Application performs current information query about actions via API twelvedata and save history in Database.
 
 * Register the history of shares registered in StockList.
 * Queries made through the API [twelvedata](https://twelvedata.com)
